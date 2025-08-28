@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/yourusername/kubernetes-manifests
+    repoURL: https://github.com/kwamib/kubernetes-manifests
     targetRevision: main
     path: apps/clixx
   destination:
