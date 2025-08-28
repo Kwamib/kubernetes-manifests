@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clixx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: clixx
+  template:
+    metadata:
+      labels:
+        app: clixx
+    spec:
+      containers:
+      - name: wordpress
+        image: wordpress:6.3-apache
+        ports:
+        - containerPort: 80
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: "clixx-k8s-db.cazmwu8usa6n.us-east-1.rds.amazonaws.com"
+        - name: WORDPRESS_DB_NAME
+          value: "wordpressdb"
+        - name: WORDPRESS_DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: wordpress-secret
+              key: db_user
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wordpress-secret
+              key: db_password
+        - name: WORDPRESS_CONFIG_EXTRA
+          value: |
+            define('WP_HOME', 'http://app.stack-mayowa.com');
+            define('WP_SITEURL', 'http://app.stack-mayowa.com');

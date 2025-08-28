@@ -1,0 +1,157 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: datadog
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: datadog-agent
+  namespace: datadog
+spec:
+  selector:
+    matchLabels:
+      app: datadog-agent
+  template:
+    metadata:
+      labels:
+        app: datadog-agent
+    spec:
+      serviceAccountName: datadog-agent
+      containers:
+      - image: gcr.io/datadoghq/agent:7
+        name: datadog-agent
+        ports:
+        - containerPort: 8125
+          name: dogstatsdport
+          protocol: UDP
+        - containerPort: 8126
+          name: traceport
+          protocol: TCP
+        env:
+        - name: DD_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: datadog-secret
+              key: api-key
+        - name: DD_SITE
+          value: "datadoghq.com"
+        - name: DD_CLUSTER_NAME
+          value: "clixx-k8s"
+        - name: DD_CRI_SOCKET_PATH
+          value: "/var/run/containerd/containerd.sock"
+        - name: DD_COLLECT_KUBERNETES_EVENTS
+          value: "true"
+        - name: DD_LEADER_ELECTION
+          value: "true"
+        - name: DD_APM_ENABLED
+          value: "true"
+        - name: DD_LOGS_ENABLED
+          value: "true"
+        - name: DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL
+          value: "true"
+        - name: DD_CONTAINER_EXCLUDE
+          value: "name:datadog-agent"
+        - name: KUBERNETES
+          value: "true"
+        - name: DD_KUBERNETES_KUBELET_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        volumeMounts:
+        - name: containerd-socket
+          mountPath: /var/run/containerd/containerd.sock
+        - name: procdir
+          mountPath: /host/proc
+          readOnly: true
+        - name: cgroups
+          mountPath: /host/sys/fs/cgroup
+          readOnly: true
+        - name: pointerdir
+          mountPath: /opt/datadog-agent/run
+        livenessProbe:
+          exec:
+            command:
+            - ./probe.sh
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - hostPath:
+          path: /var/run/containerd/containerd.sock
+        name: containerd-socket
+      - hostPath:
+          path: /proc
+        name: procdir
+      - hostPath:
+          path: /sys/fs/cgroup
+        name: cgroups
+      - hostPath:
+          path: /opt/datadog-agent/run
+        name: pointerdir
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: datadog-agent
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - events
+  - endpoints
+  - pods
+  - nodes
+  - componentstatuses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "quota.openshift.io"
+  resources:
+  - clusterresourcequotas
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - "autoscaling"
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - datadog-leader-election
+  verbs:
+  - get
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: datadog-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: datadog-agent
+subjects:
+- kind: ServiceAccount
+  name: datadog-agent
+  namespace: datadog
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: datadog-agent
+  namespace: datadog
