@@ -13,8 +13,8 @@ spec:
         app: clixx
     spec:
       containers:
-      - name: wordpress
-        image: wordpress:6.3-apache
+      - name: clixx
+        image: 137692571668.dkr.ecr.us-east-1.amazonaws.com/clixx-image:latest
         ports:
         - containerPort: 80
         env:
