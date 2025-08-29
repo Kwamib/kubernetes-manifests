@@ -18,16 +18,16 @@ spec:
         ports:
         - containerPort: 80
         env:
-        - name: WORDPRESS_DB_HOST
+        - name: DB_HOST
           value: "clixx-k8s-db.cazmwu8usa6n.us-east-1.rds.amazonaws.com"
-        - name: WORDPRESS_DB_NAME
+        - name: DB_NAME
           value: "wordpressdb"
-        - name: WORDPRESS_DB_USER
+        - name: DB_USER
           valueFrom:
             secretKeyRef:
               name: wordpress-secret
               key: db_user
-        - name: WORDPRESS_DB_PASSWORD
+        - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: wordpress-secret
