@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: clixx
-        image: 957573079780.dkr.ecr.us-east-1.amazonaws.com/clixx-repository:latest
+        image: 957573079780.dkr.ecr.us-east-1.amazonaws.com/clixx-repository:clixx-img-1.4
         ports:
         - containerPort: 80
         env:
