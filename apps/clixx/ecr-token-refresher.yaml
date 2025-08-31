@@ -1,0 +1,138 @@
+---
+# ServiceAccount for the CronJob
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ecr-refresher-sa
+  namespace: default
+---
+# Role with permissions to manage secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ecr-refresher-role
+  namespace: default
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update", "patch", "get", "list"]
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ecr-refresher-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ecr-refresher-role
+subjects:
+- kind: ServiceAccount
+  name: ecr-refresher-sa
+  namespace: default
+---
+# CronJob to refresh ECR token every 6 hours
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ecr-token-refresher
+  namespace: default
+spec:
+  schedule: "0 */6 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 600  # Clean up completed jobs after 10 minutes
+      template:
+        spec:
+          serviceAccountName: ecr-refresher-sa
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: "true"
+          tolerations:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+          containers:
+          - name: refresher
+            image: amazon/aws-cli:latest
+            command: ["/bin/bash", "-c"]
+            args:
+            - |
+              set -e
+              echo "[INFO] Installing kubectl..."
+              curl -sLO "https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl"
+              chmod +x kubectl
+              mv kubectl /usr/local/bin/
+              
+              echo "[INFO] Refreshing ECR token..."
+              TOKEN=$(aws ecr get-login-password --region us-east-1)
+              
+              if [ -z "$TOKEN" ]; then
+                echo "[ERROR] Failed to get ECR token"
+                exit 1
+              fi
+              
+              kubectl create secret docker-registry ecr-creds \
+                --docker-server=957573079780.dkr.ecr.us-east-1.amazonaws.com \
+                --docker-username=AWS \
+                --docker-password=$TOKEN \
+                --namespace=default \
+                --dry-run=client -o yaml | kubectl apply -f -
+              
+              echo "[INFO] ECR token refreshed successfully at $(date)"
+            env:
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+          restartPolicy: OnFailure
+---
+# Job to create initial secret immediately
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ecr-token-init
+  namespace: default
+spec:
+  ttlSecondsAfterFinished: 600  # Clean up completed job after 10 minutes
+  template:
+    spec:
+      serviceAccountName: ecr-refresher-sa
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: init
+        image: amazon/aws-cli:latest
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -e
+          echo "[INFO] Installing kubectl..."
+          curl -sLO "https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          mv kubectl /usr/local/bin/
+          
+          echo "[INFO] Creating initial ECR token..."
+          TOKEN=$(aws ecr get-login-password --region us-east-1)
+          
+          if [ -z "$TOKEN" ]; then
+            echo "[ERROR] Failed to get ECR token"
+            exit 1
+          fi
+          
+          kubectl create secret docker-registry ecr-creds \
+            --docker-server=957573079780.dkr.ecr.us-east-1.amazonaws.com \
+            --docker-username=AWS \
+            --docker-password=$TOKEN \
+            --namespace=default \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          echo "[INFO] Initial ECR token created successfully at $(date)"
+        env:
+        - name: AWS_DEFAULT_REGION
+          value: us-east-1
+      restartPolicy: Never
