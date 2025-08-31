@@ -35,8 +35,8 @@ spec:
                   name: wordpress-secret
                   key: db_password
             - name: WP_HOME
-              value: "https://app.stack-mayowa.com"
+              value: "http://app.stack-mayowa.com"
             - name: WP_SITEURL
-              value: "https://app.stack-mayowa.com"
+              value: "http://app.stack-mayowa.com"
       imagePullSecrets:
         - name: ecr-creds
