@@ -13,30 +13,29 @@ spec:
         app: clixx
     spec:
       containers:
-      - name: clixx
-        image: 957573079780.dkr.ecr.us-east-1.amazonaws.com/clixx-repository:clixx-img-1.9
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 80
-        env:
-        - name: DB_HOST
-          value: "clixx-k8s-db.cazmwu8usa6n.us-east-1.rds.amazonaws.com"
-        - name: DB_NAME
-          value: "wordpressdb"
-        - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              name: wordpress-secret
-              key: db_user
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: wordpress-secret
-              key: db_password
-        - name: WP_HOME
-          value: "https://app.stack-mayowa.com"
-        - name: WP_SITEURL
-          value: "https://app.stack-mayowa.com"
-
+        - name: clixx
+          image: 957573079780.dkr.ecr.us-east-1.amazonaws.com/clixx-repository:clixx-img-1.9
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: DB_HOST
+              value: "clixx-k8s-db.cazmwu8usa6n.us-east-1.rds.amazonaws.com"
+            - name: DB_NAME
+              value: "wordpressdb"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wordpress-secret
+                  key: db_user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wordpress-secret
+                  key: db_password
+            - name: WP_HOME
+              value: "https://app.stack-mayowa.com"
+            - name: WP_SITEURL
+              value: "https://app.stack-mayowa.com"
       imagePullSecrets:
-      - name: ecr-creds
+        - name: ecr-creds
