@@ -15,7 +15,7 @@ spec:
       dnsPolicy: "Default"  # This fixes the DNS resolution issue
       containers:
         - name: clixx
-          image: 957573079780.dkr.ecr.us-east-1.amazonaws.com/clixx-repository:clixx-img-2.1
+          image: 957573079780.dkr.ecr.us-east-1.amazonaws.com/clixx-repository:clixx-img-2.2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
