@@ -87,7 +87,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ecr-token-init-$(date +%s)  # Unique name to avoid conflicts
+  name: ecr-token-init  # Unique name to avoid conflicts
   namespace: default
 spec:
   ttlSecondsAfterFinished: 600
