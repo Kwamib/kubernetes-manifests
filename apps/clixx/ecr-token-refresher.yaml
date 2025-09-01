@@ -15,7 +15,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
-  verbs: ["create", "update", "patch", "get", "list"]
+  verbs: ["create", "update", "patch", "get", "list", "delete"]
 ---
 # RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -44,16 +44,11 @@ spec:
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
-      ttlSecondsAfterFinished: 600  # Clean up completed jobs after 10 minutes
+      ttlSecondsAfterFinished: 600
       template:
         spec:
           serviceAccountName: ecr-refresher-sa
-          nodeSelector:
-            node-role.kubernetes.io/control-plane: "true"
-          tolerations:
-          - key: node-role.kubernetes.io/control-plane
-            operator: Exists
-            effect: NoSchedule
+          hostNetwork: true  # Use host network to access AWS metadata service
           containers:
           - name: refresher
             image: amazon/aws-cli:latest
@@ -74,12 +69,13 @@ spec:
                 exit 1
               fi
               
+              # Delete and recreate to ensure it's updated
+              kubectl delete secret ecr-creds --ignore-not-found -n default
               kubectl create secret docker-registry ecr-creds \
                 --docker-server=957573079780.dkr.ecr.us-east-1.amazonaws.com \
                 --docker-username=AWS \
-                --docker-password=$TOKEN \
-                --namespace=default \
-                --dry-run=client -o yaml | kubectl apply -f -
+                --docker-password="$TOKEN" \
+                --namespace=default
               
               echo "[INFO] ECR token refreshed successfully at $(date)"
             env:
@@ -91,19 +87,14 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ecr-token-init
+  name: ecr-token-init-$(date +%s)  # Unique name to avoid conflicts
   namespace: default
 spec:
-  ttlSecondsAfterFinished: 600  # Clean up completed job after 10 minutes
+  ttlSecondsAfterFinished: 600
   template:
     spec:
       serviceAccountName: ecr-refresher-sa
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: "true"
-      tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
+      hostNetwork: true  # Use host network to access AWS metadata service
       containers:
       - name: init
         image: amazon/aws-cli:latest
@@ -124,12 +115,13 @@ spec:
             exit 1
           fi
           
+          # Delete and recreate to ensure it's fresh
+          kubectl delete secret ecr-creds --ignore-not-found -n default
           kubectl create secret docker-registry ecr-creds \
             --docker-server=957573079780.dkr.ecr.us-east-1.amazonaws.com \
             --docker-username=AWS \
-            --docker-password=$TOKEN \
-            --namespace=default \
-            --dry-run=client -o yaml | kubectl apply -f -
+            --docker-password="$TOKEN" \
+            --namespace=default
           
           echo "[INFO] Initial ECR token created successfully at $(date)"
         env:
