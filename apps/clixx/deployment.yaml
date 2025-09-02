@@ -12,7 +12,7 @@ spec:
       labels:
         app: clixx
     spec:
-      dnsPolicy: "Default"  # This fixes the DNS resolution issue
+      dnsPolicy: "Default"
       containers:
         - name: clixx
           image: 957573079780.dkr.ecr.us-east-1.amazonaws.com/clixx-repository:clixx-img-2.5
@@ -20,16 +20,16 @@ spec:
           ports:
             - containerPort: 80
           env:
-            - name: DB_HOST
+            - name: WORDPRESS_DB_HOST
               value: "clixx-k8s-db.cazmwu8usa6n.us-east-1.rds.amazonaws.com"
-            - name: DB_NAME
+            - name: WORDPRESS_DB_NAME
               value: "wordpressdb"
-            - name: DB_USER
+            - name: WORDPRESS_DB_USER
               valueFrom:
                 secretKeyRef:
                   name: wordpress-secret
                   key: db_user
-            - name: DB_PASSWORD
+            - name: WORDPRESS_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: wordpress-secret
